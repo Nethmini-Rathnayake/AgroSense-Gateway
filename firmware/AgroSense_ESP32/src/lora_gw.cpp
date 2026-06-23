@@ -13,7 +13,7 @@ void loraInit(){
   SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_SS);
   LoRa.setPins(LORA_SS, LORA_RST, LORA_DIO0);
   if(!LoRa.begin(LORA_FREQ)){ Serial.println("LoRa init FAILED"); return; }
-  LoRa.setSyncWord(0x12);
+  LoRa.setSyncWord(0x7A);
   Serial.println("LoRa gateway up");
 }
 
@@ -36,13 +36,17 @@ String kv(const String& payload,const String& key){
 }
 
 void loraReceive(){
-  int sz=LoRa.parsePacket(); if(sz==0) return;
+  int sz=LoRa.parsePacket();
+  if(sz>0){ String raw=""; while(LoRa.available()) raw+=(char)LoRa.read();
+    Serial.print("[LoRa] RAW rx: "); Serial.println(raw); }
+  if(sz==0) return;
   String s=""; while(LoRa.available()) s+=(char)LoRa.read();
   int rssi=LoRa.packetRssi();
   if(pktField(s,0)!="AG") return;
   String type=pktField(s,1), uid=pktField(s,2), id=pktField(s,3), payload=pktField(s,4);
 
-  if(type=="J"){                                  // C1: new-node detection
+  if(type=="J"){
+    Serial.print("[LoRa] node connected (JOIN) uid="); Serial.println(uid);                                  // C1: new-node detection
     if(findNodeByUid(uid)<0) announceUnregistered(uid, rssi);
   }
   else if(type=="D" || type=="H"){
@@ -95,7 +99,11 @@ void announceUnregistered(const String& uid, int rssi){
 
 // C3/C4: assign a field id + name, push assignment to the node over LoRa
 void bindNode(const String& uid, const String& name){
-  if(uid.length()==0) return;
+  if(uid.length()==0 || uid=="ESP32-SELF") return;   // never bind the gateway itself
+  // only accept UIDs that arrived via a real JOIN and are waiting for registration
+  bool inUnreg=false;
+  for(int i=0;i<unregCount;i++) if(unregSeen[i]==uid){ inUnreg=true; break; }
+  if(!inUnreg) return;
   int n=findNodeByUid(uid);
   if(n<0){
     n=regCount++; registry[n].uid=uid;
@@ -107,6 +115,8 @@ void bindNode(const String& uid, const String& name){
   // tell the node its assigned id (A packet)
   String pkt="AG,A,"+uid+","+registry[n].field+",name="+name;
   LoRa.beginPacket(); LoRa.print(pkt); LoRa.endPacket();
+  Serial.print("[LoRa] node binded "); Serial.print(uid);
+  Serial.print(" -> "); Serial.println(registry[n].field);
   publishAlert("info", registry[n].field.c_str(), ("Bound "+uid+" as "+name).c_str());
   publishRegistry();
 }
@@ -115,6 +125,7 @@ void loraSendCommand(const String& field, const String& cmd){
   int n=findNodeByField(field); if(n<0) return;
   String pkt="AG,C,"+registry[n].uid+","+field+","+cmd;
   LoRa.beginPacket(); LoRa.print(pkt); LoRa.endPacket();
+  Serial.print("[LoRa] cmd -> "); Serial.print(field); Serial.print(": "); Serial.println(cmd);
 }
 
 int remoteScore(float m){
@@ -142,6 +153,8 @@ void forwardNodeData(int n, const String& payload){
   j+="\"score\":"+String(sc)+",";
   j+="\"scoreparts\":{\"moisture\":"+String(max(0.0f,(float)(thrMoist-m))*1.6f,0)+",\"rain\":"+String(rainSoon?-45:0)+",\"time\":"+String(partOfDay=="noon"?-15:5)+"}";
   j+="}";
+  Serial.print("[LoRa] data from "); Serial.print(registry[n].field);
+  //Serial.print(" -> MQTT  moist="); Serial.println((int)m);
   publishJSON(topic, j);
 }
 

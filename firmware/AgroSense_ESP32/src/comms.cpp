@@ -26,14 +26,14 @@ void wifiStatusPrint(){
   wl_status_t now = WiFi.status();
   if(now == last) return;
   last = now;
-  if(now == WL_CONNECTED)
-    Serial.printf("[WiFi] connected  IP=%s\n", WiFi.localIP().toString().c_str());
-  else if(now == WL_NO_SSID_AVAIL)
-    Serial.printf("[WiFi] SSID '%s' not found\n", WIFI_SSID);
-  else if(now == WL_CONNECT_FAILED)
-    Serial.println("[WiFi] connect failed (wrong password?)");
-  else
-    Serial.printf("[WiFi] status=%d\n", (int)now);
+  // if(now == WL_CONNECTED)
+  //   Serial.printf("[WiFi] connected  IP=%s\n", WiFi.localIP().toString().c_str());
+  // else if(now == WL_NO_SSID_AVAIL)
+  //   Serial.printf("[WiFi] SSID '%s' not found\n", WIFI_SSID);
+  // else if(now == WL_CONNECT_FAILED)
+  //   Serial.println("[WiFi] connect failed (wrong password?)");
+  // else
+  //   Serial.printf("[WiFi] status=%d\n", (int)now);
 }
 
 bool mqttConnect(){
@@ -44,25 +44,25 @@ bool mqttConnect(){
   mqtt.setSocketTimeout(2);
   mqtt.setKeepAlive(10);
   String cid = String(MQTT_CLIENT) + "-" + String((uint32_t)ESP.getEfuseMac(), HEX);
-  Serial.printf("[MQTT] connecting to %s:%d ...\n", MQTT_HOST, MQTT_PORT);
+  //Serial.printf("[MQTT] connecting to %s:%d ...\n", MQTT_HOST, MQTT_PORT);
   if(mqtt.connect(cid.c_str(), NULL, NULL, T_STATUS_GW, 1, true, "OFFLINE")){
     mqtt.publish(T_STATUS_GW, "ONLINE", true);
     mqtt.subscribe(T_CMD_VALVE); mqtt.subscribe(T_CMD_MODE);
     mqtt.subscribe(T_CMD_THR);   mqtt.subscribe(T_CMD_BIND);
     mqtt.subscribe(T_CMD_WX);
-    Serial.printf("[MQTT] connected — %d record(s) queued\n", eeCount());
+    //Serial.printf("[MQTT] connected — %d record(s) queued\n", eeCount());
     return true;
   }
-  Serial.printf("[MQTT] failed  rc=%d  (%s)\n", mqtt.state(),
-    mqtt.state()==-4 ? "timeout/broker too slow" :
-    mqtt.state()==-3 ? "connection lost" :
-    mqtt.state()==-2 ? "broker unreachable (firewall/IP?)" :
-    mqtt.state()==-1 ? "disconnected" :
-    mqtt.state()== 1 ? "bad protocol" :
-    mqtt.state()== 2 ? "bad client ID" :
-    mqtt.state()== 3 ? "broker unavailable" :
-    mqtt.state()== 4 ? "bad credentials" :
-    mqtt.state()== 5 ? "not authorised" : "unknown");
+  // Serial.printf("[MQTT] failed  rc=%d  (%s)\n", mqtt.state(),
+  //   mqtt.state()==-4 ? "timeout/broker too slow" :
+  //   mqtt.state()==-3 ? "connection lost" :
+  //   mqtt.state()==-2 ? "broker unreachable (firewall/IP?)" :
+  //   mqtt.state()==-1 ? "disconnected" :
+  //   mqtt.state()== 1 ? "bad protocol" :
+  //   mqtt.state()== 2 ? "bad client ID" :
+  //   mqtt.state()== 3 ? "broker unavailable" :
+  //   mqtt.state()== 4 ? "bad credentials" :
+  //   mqtt.state()== 5 ? "not authorised" : "unknown");
   return false;
 }
 
@@ -112,7 +112,7 @@ bool publishRecord(const TelemetryRecord& r){
   if (ok) {
     //Serial.println("[PUB] ok");
   } else {
-    Serial.printf("[PUB] FAILED  state=%d\n", mqtt.state());
+    //Serial.printf("[PUB] FAILED  state=%d\n", mqtt.state());
   }
   return ok;
 }
@@ -156,6 +156,7 @@ void onMqtt(char* topic, byte* payload, unsigned int len){
   else if(t==T_CMD_BIND){
     String uid=jsonStr(p,"uid"), name=jsonStr(p,"name");
     bindNode(uid, name);
+    mqtt.publish(T_CMD_BIND, "", true);   // clear retained bind so it doesn't re-fire on reconnect
   }
   else if(t==T_CMD_WX){
     rainSoon = (p.indexOf("true")>=0);

@@ -3,11 +3,11 @@
 #pragma once
 
 // ---- Wi-Fi ----
-#define WIFI_SSID      "HUAWEI nova Y61"
-#define WIFI_PASS      "12345678"
+#define WIFI_SSID      "Redmi Note 13"
+#define WIFI_PASS      "Pasindu1112"
 
 // ---- MQTT broker (the PC running Node-RED/Mosquitto) ----
-#define MQTT_HOST "192.168.43.155"   // <-- your broker IP (run `ipconfig`/`hostname -I`)
+#define MQTT_HOST "10.63.57.139"   // <-- your broker IP (run `ipconfig`/`hostname -I`)
 #define MQTT_PORT      1883
 #define MQTT_CLIENT    "agrosense-esp32"
 
@@ -32,7 +32,7 @@
 #define LORA_SS        18    // Heltec uses GPIO18 for CS (not 5)
 #define LORA_RST       14
 #define LORA_DIO0      26    // Heltec uses GPIO26 (not 2)
-#define LORA_FREQ      433E6 // set to YOUR board's variant: 433E6 / 868E6 / 915E6
+#define LORA_FREQ      915E6 // set to YOUR board's variant: 433E6 / 868E6 / 915E6
 
 // ---- Behaviour ----
 #define MA_N           3      // moving-average window (A3, configurable)
