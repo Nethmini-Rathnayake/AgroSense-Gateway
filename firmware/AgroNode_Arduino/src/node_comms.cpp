@@ -27,7 +27,7 @@ void loraInit(){
     Serial.println("[LoRa] init FAIL");
     while(1){ digitalWrite(PIN_LED,(millis()/100)%2); }
   }
-  LoRa.setSyncWord(0x12);
+  LoRa.setSyncWord(0x7A);
   Serial.println("[LoRa] connected");        // <-- radio up on the sub-node
 }
 

@@ -36,7 +36,7 @@
 
 // ---- Behaviour ----
 #define MA_N           3      // moving-average window (A3, configurable)
-#define PUBLISH_MS     2000   // telemetry period
+#define PUBLISH_MS     3000   // telemetry period
 #define OLED_MS        1000
 #define HEARTBEAT_TIMEOUT 15000  // node OFFLINE if silent this long (A13)
 #define MAX_EE_RECORDS 150    // 5 min × 30 reads/min — EEPROM queue depth

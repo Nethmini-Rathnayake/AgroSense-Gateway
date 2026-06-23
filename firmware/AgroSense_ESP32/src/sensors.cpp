@@ -74,9 +74,17 @@ void oledShow(){
     oled.println(WIFI_SSID);
   }
 
-  oled.println();
   oled.print("MQTT: ");
-  oled.println(mqtt.connected() ? "Connected" : "Waiting...");
+  oled.print(mqtt.connected() ? "OK" : "Wait");
+  oled.print("  Rain:");
+  oled.println(rain ? "YES" : "NO");
+
+  char buf[22];
+  snprintf(buf, sizeof(buf), "T:%.1fC  H:%.0f%%", temp, hum);
+  oled.println(buf);
+  snprintf(buf, sizeof(buf), "Soil:%.0f%%  L:%.0f%%", moist, light);
+  oled.println(buf);
+  if (sensorFault) oled.println("[SENSOR FAULT]");
 
   oled.display();
 }

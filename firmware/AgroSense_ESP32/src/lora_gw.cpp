@@ -13,7 +13,7 @@ void loraInit(){
   SPI.begin(LORA_SCK, LORA_MISO, LORA_MOSI, LORA_SS);
   LoRa.setPins(LORA_SS, LORA_RST, LORA_DIO0);
   if(!LoRa.begin(LORA_FREQ)){ Serial.println("LoRa init FAILED"); return; }
-  LoRa.setSyncWord(0x7A);
+  LoRa.setSyncWord(0x34);
   Serial.println("LoRa gateway up");
 }
 
@@ -35,30 +35,83 @@ String kv(const String& payload,const String& key){
   return payload.substring(k+key.length()+1,e);
 }
 
+// void loraReceive(){
+//   int sz=LoRa.parsePacket();
+//   if(sz==0) return;
+//   String s=""; while(LoRa.available()) s+=(char)LoRa.read();
+//   Serial.print("[LoRa] RAW rx: "); Serial.println(s);   // print AFTER reading into s
+//   int rssi=LoRa.packetRssi();
+//   if(pktField(s,0)!="AG7X9K") return;
+
+//   String type=pktField(s,1), uid=pktField(s,2), id=pktField(s,3), payload=pktField(s,4);
+
+//   if(type=="J"){
+//     Serial.print("[LoRa] node connected (JOIN) uid="); Serial.println(uid);                                  // C1: new-node detection
+//     if(findNodeByUid(uid)<0) announceUnregistered(uid, rssi);
+//   }
+//   else if(type=="D" || type=="H"){
+//     int n=findNodeByField(id); if(n<0){ n=findNodeByUid(uid); }
+//     Serial.print(n);
+//     if(n>=0){
+//       registry[n].lastSeen=millis();
+//       if(!registry[n].online){ registry[n].online=true; publishAlert("info",registry[n].field.c_str(),"Node back ONLINE"); }
+//       if(type=="D") forwardNodeData(n, payload);
+//     }
+//   }
+// }
 void loraReceive(){
   int sz=LoRa.parsePacket();
-  if(sz>0){ String raw=""; while(LoRa.available()) raw+=(char)LoRa.read();
-    Serial.print("[LoRa] RAW rx: "); Serial.println(raw); }
   if(sz==0) return;
   String s=""; while(LoRa.available()) s+=(char)LoRa.read();
+  
   int rssi=LoRa.packetRssi();
-  if(pktField(s,0)!="AG") return;
+  if(pktField(s,0)!="AG7X9K") return;
+  Serial.print("[LoRa] RAW rx: "); Serial.println(s);
   String type=pktField(s,1), uid=pktField(s,2), id=pktField(s,3), payload=pktField(s,4);
 
   if(type=="J"){
-    Serial.print("[LoRa] node connected (JOIN) uid="); Serial.println(uid);                                  // C1: new-node detection
+    Serial.print("[LoRa] node connected (JOIN) uid="); Serial.println(uid);
     if(findNodeByUid(uid)<0) announceUnregistered(uid, rssi);
   }
   else if(type=="D" || type=="H"){
     int n=findNodeByField(id); if(n<0){ n=findNodeByUid(uid); }
+    
     if(n>=0){
       registry[n].lastSeen=millis();
       if(!registry[n].online){ registry[n].online=true; publishAlert("info",registry[n].field.c_str(),"Node back ONLINE"); }
       if(type=="D") forwardNodeData(n, payload);
+    } else {
+      // ---> NEW FIX: If n is -1 (unknown node), announce it so the user can bind it!
+      Serial.println("[LoRa] Heard data from UNKNOWN node! Adding to Unregistered list...");
+      announceUnregistered(uid, rssi);
     }
   }
 }
 
+void bindNode(const String& uid, const String& name){
+  if(uid.length()==0 || uid=="ESP32-SELF") return;   
+
+  // ---> NEW FIX: We removed the strict 'inUnreg' security trap so you can bind freely! <---
+
+  int n=findNodeByUid(uid);
+  if(n<0){
+    n=regCount++; registry[n].uid=uid;
+    registry[n].field="field_"+String(nextFieldIdx++);
+  }
+  
+  registry[n].name=name; registry[n].online=true; registry[n].lastSeen=millis();
+  
+  // Clean up the unregistered list
+  for(int i=0;i<unregCount;i++) if(unregSeen[i]==uid){ unregSeen[i]=unregSeen[--unregCount]; break; }
+  
+  String pkt="AG7X9K,A,"+uid+","+registry[n].field+",name="+name;
+  LoRa.beginPacket(); LoRa.print(pkt); LoRa.endPacket();
+  
+  Serial.print("[LoRa] node binded "); Serial.print(uid);
+  Serial.print(" -> "); Serial.println(registry[n].field);
+  publishAlert("info", registry[n].field.c_str(), ("Bound "+uid+" as "+name).c_str());
+  publishRegistry();
+}
 // void loraReceive(){
 //   int sz=LoRa.parsePacket(); 
   
@@ -98,32 +151,32 @@ void announceUnregistered(const String& uid, int rssi){
 }
 
 // C3/C4: assign a field id + name, push assignment to the node over LoRa
-void bindNode(const String& uid, const String& name){
-  if(uid.length()==0 || uid=="ESP32-SELF") return;   // never bind the gateway itself
-  // only accept UIDs that arrived via a real JOIN and are waiting for registration
-  bool inUnreg=false;
-  for(int i=0;i<unregCount;i++) if(unregSeen[i]==uid){ inUnreg=true; break; }
-  if(!inUnreg) return;
-  int n=findNodeByUid(uid);
-  if(n<0){
-    n=regCount++; registry[n].uid=uid;
-    registry[n].field="field_"+String(nextFieldIdx++);
-  }
-  registry[n].name=name; registry[n].online=true; registry[n].lastSeen=millis();
-  // remove from unregistered list
-  for(int i=0;i<unregCount;i++) if(unregSeen[i]==uid){ unregSeen[i]=unregSeen[--unregCount]; break; }
-  // tell the node its assigned id (A packet)
-  String pkt="AG,A,"+uid+","+registry[n].field+",name="+name;
-  LoRa.beginPacket(); LoRa.print(pkt); LoRa.endPacket();
-  Serial.print("[LoRa] node binded "); Serial.print(uid);
-  Serial.print(" -> "); Serial.println(registry[n].field);
-  publishAlert("info", registry[n].field.c_str(), ("Bound "+uid+" as "+name).c_str());
-  publishRegistry();
-}
+// void bindNode(const String& uid, const String& name){
+//   if(uid.length()==0 || uid=="ESP32-SELF") return;   // never bind the gateway itself
+//   // only accept UIDs that arrived via a real JOIN and are waiting for registration
+//   bool inUnreg=false;
+//   for(int i=0;i<unregCount;i++) if(unregSeen[i]==uid){ inUnreg=true; break; }
+//   if(!inUnreg) return;
+//   int n=findNodeByUid(uid);
+//   if(n<0){
+//     n=regCount++; registry[n].uid=uid;
+//     registry[n].field="field_"+String(nextFieldIdx++);
+//   }
+//   registry[n].name=name; registry[n].online=true; registry[n].lastSeen=millis();
+//   // remove from unregistered list
+//   for(int i=0;i<unregCount;i++) if(unregSeen[i]==uid){ unregSeen[i]=unregSeen[--unregCount]; break; }
+//   // tell the node its assigned id (A packet)
+//   String pkt="AG7X9K,A,"+uid+","+registry[n].field+",name="+name;
+//   LoRa.beginPacket(); LoRa.print(pkt); LoRa.endPacket();
+//   Serial.print("[LoRa] node binded "); Serial.print(uid);
+//   Serial.print(" -> "); Serial.println(registry[n].field);
+//   publishAlert("info", registry[n].field.c_str(), ("Bound "+uid+" as "+name).c_str());
+//   publishRegistry();
+// }
 
 void loraSendCommand(const String& field, const String& cmd){
   int n=findNodeByField(field); if(n<0) return;
-  String pkt="AG,C,"+registry[n].uid+","+field+","+cmd;
+  String pkt="AG7X9K,C,"+registry[n].uid+","+field+","+cmd;
   LoRa.beginPacket(); LoRa.print(pkt); LoRa.endPacket();
   Serial.print("[LoRa] cmd -> "); Serial.print(field); Serial.print(": "); Serial.println(cmd);
 }

@@ -82,6 +82,7 @@ void saveTelemetry(){
   r.pTime  = (int8_t) constrain((int)pTime,  -128, 127);
   //Serial.printf("[SAVE] moist=%d  temp=%.1f  hum=%d  score=%d\n",
   //              r.moist, r.temp, r.hum, r.score);
+  r.capturedMillis = millis();
   eePush(r);
 }
 
@@ -104,7 +105,8 @@ bool publishRecord(const TelemetryRecord& r){
   j += "\"mode\":\""+String(r.mode ? "MANUAL" : "AUTO")+"\",";
   j += "\"score\":"+String(r.score)+",";
   j += "\"scoreparts\":{\"moisture\":"+String(r.pMoist)+",\"rain\":"+String(r.pRain)+",\"time\":"+String(r.pTime)+"}";
-  j += "}";
+  unsigned long age_ms = millis() - r.capturedMillis;
+  j += ",\"age_ms\":" + String(age_ms) + "}";
   //Serial.printf("[SEND] moist=%d  temp=%.1f  hum=%d  score=%d  remaining=%d\n",
   //              r.moist, r.temp, r.hum, r.score, eeCount());
   //Serial.print("[JSON] "); Serial.println(j);

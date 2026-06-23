@@ -27,7 +27,7 @@ struct TelemetryRecord {
   uint8_t  pMoist;      // score component, 0-255
   int8_t   pRain;       // score component, -128..127
   int8_t   pTime;       // score component, -128..127
-  //uint32_t capturedMs;  // millis() at capture time, for age_ms in JSON
+  unsigned long capturedMillis;  // millis() at capture time, for age_ms in JSON
 } __attribute__((packed));
 
 // ---- shared globals (defined in main.cpp) ----
