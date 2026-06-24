@@ -27,7 +27,9 @@ void readSensors(){
                       SOIL_DRY_ADC, SOIL_WET_ADC, 0, 100);          // 0 dry .. 100 wet
   float lightPct= map(constrain(ldrRaw, LDR_DARK_ADC, LDR_BRIGHT_ADC),
                       LDR_DARK_ADC, LDR_BRIGHT_ADC, 0, 100);
-  rain = (rainRaw < RAIN_WET_ADC);
+  rainLevel = (rainRaw > RAIN_WET_ADC) ? 1 : 0;
+  Serial.printf("[RAIN] raw=%d  -> %s  (threshold=%d)\n",
+    rainRaw, rainLevel ? "RAIN" : "NONE", RAIN_WET_ADC);
 
   // --- fault detection (A12): out-of-range or stuck ---
   bool oor = isnan(t) || isnan(h) || t<-10 || t>70 || soilPct<0 || soilPct>100;
@@ -55,7 +57,7 @@ void oledInit(){
   pinMode(OLED_RST, OUTPUT);
   digitalWrite(OLED_RST, LOW);  delay(20);
   digitalWrite(OLED_RST, HIGH); delay(20);
-  if(!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C)){ Serial.println("OLED fail"); return; }
+  if(!oled.begin(SSD1306_SWITCHCAPVCC, 0x3C, true, false)){ Serial.println("OLED fail"); return; }
   oled.clearDisplay(); oled.setTextColor(SSD1306_WHITE);
   oled.setTextSize(1); oled.setCursor(0,0);
   oled.println("AgroSense V2"); oled.display();
@@ -77,7 +79,7 @@ void oledShow(){
   oled.print("MQTT: ");
   oled.print(mqtt.connected() ? "OK" : "Wait");
   oled.print("  Rain:");
-  oled.println(rain ? "YES" : "NO");
+  oled.println(rainLevel ? "Rain" : "None");
 
   char buf[22];
   snprintf(buf, sizeof(buf), "T:%.1fC  H:%.0f%%", temp, hum);

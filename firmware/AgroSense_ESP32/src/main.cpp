@@ -22,7 +22,8 @@ Servo             valveServo;
 // live readings for the ESP32's own field
 float  temp=0, hum=0, moist=0, light=0;
 float  moistInst=0;
-bool   rain=false, rainSoon=false;
+bool     rainSoon=false;
+uint8_t  rainLevel=0;
 bool   valveOpen=false;
 String selfMode="AUTO";
 int    score=0;

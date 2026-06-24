@@ -21,7 +21,7 @@ void computeScore(){
   // moisture deficit contributes positively (drier -> higher score)
   pMoist = max(0.0f, (float)(thrMoist - moist)) * 1.6f;
   // rain (local sensor OR weather hint from dashboard) strongly suppresses
-  pRain  = (rain || rainSoon) ? -45.0f : 0.0f;
+  pRain  = (rainLevel > 0 || rainSoon) ? -45.0f : 0.0f;
   // time-of-day bias (A7)
   if      (partOfDay=="morning") pTime= 25;
   else if (partOfDay=="evening") pTime= 20;
@@ -36,7 +36,7 @@ void computeScore(){
 // A5/A8: multi-factor decision -> servo
 void decideValve(){
   if (selfMode=="MANUAL") return;              // dashboard controls valve directly
-  bool open = (score >= 60) && !rain && !rainSoon;
+  bool open = (score >= 60) && (rainLevel == 0) && !rainSoon;
   if (open != valveOpen) setValve(open);
 }
 

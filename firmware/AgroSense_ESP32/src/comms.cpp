@@ -73,9 +73,9 @@ void saveTelemetry(){
   r.hum    = (uint8_t)constrain((int)hum,      0, 255);
   r.moist  = (uint8_t)constrain((int)moistInst, 0, 100);
   r.light  = (uint8_t)constrain((int)light,     0, 100);
-  r.rain   = rain   ? 1 : 0;
+  r.rain   = rainLevel;
   r.score  = (uint8_t)constrain(score,          0, 100);
-  r.valve  = valveOpen ? 1 : 0;
+  r.valve  = valveServo.attached() ? (valveOpen ? 1 : 0) : 0xFF;
   r.mode   = (selfMode == "MANUAL") ? 1 : 0;
   r.pMoist = (uint8_t)constrain((int)pMoist,    0, 255);
   r.pRain  = (int8_t) constrain((int)pRain,  -128, 127);
@@ -100,8 +100,8 @@ bool publishRecord(const TelemetryRecord& r){
   j += "\"hum\":"+String(r.hum)+",";
   j += "\"moist\":"+String(r.moist)+",";
   j += "\"light\":"+String(r.light)+",";
-  j += "\"rain\":"+String(r.rain ? "true" : "false")+",";
-  j += "\"valve\":\""+String(r.valve ? "ON" : "OFF")+"\",";
+  j += "\"rain\":"+String(r.rain ? 1 : 0)+",";
+  j += (r.valve==0xFF) ? "\"valve\":null," : "\"valve\":\""+String(r.valve ? "ON" : "OFF")+"\",";
   j += "\"mode\":\""+String(r.mode ? "MANUAL" : "AUTO")+"\",";
   j += "\"score\":"+String(r.score)+",";
   j += "\"scoreparts\":{\"moisture\":"+String(r.pMoist)+",\"rain\":"+String(r.pRain)+",\"time\":"+String(r.pTime)+"}";

@@ -39,7 +39,8 @@ extern Servo             valveServo;
 
 extern float  temp, hum, moist, light;
 extern float  moistInst;
-extern bool   rain, rainSoon, valveOpen;
+extern bool    rainSoon, valveOpen;
+extern uint8_t rainLevel;   // 0=none, 1=light, 2=heavy
 extern String selfMode;
 extern int    score;
 extern float  pMoist, pRain, pTime;

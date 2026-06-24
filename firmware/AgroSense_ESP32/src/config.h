@@ -46,7 +46,7 @@
 // ---- Sensor calibration (tune to your probes) ----
 #define SOIL_DRY_ADC   4095   // ADC reading in dry air
 #define SOIL_WET_ADC   2100   // ADC reading in water
-#define RAIN_WET_ADC   1500   // below this = raining
+#define RAIN_WET_ADC   2000   // above this = rain detected (sensor: high=wet, low=dry)
 #define LDR_DARK_ADC   200
 #define LDR_BRIGHT_ADC 3000
 
